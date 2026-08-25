@@ -11,6 +11,38 @@ let timerInterval = null;
 let gameStartedAt = null;
 let elapsedSeconds = 0;
 let gameCompleted = false;
+const THEME_KEY = 'sudokuTheme';
+
+function setMessage(text, type = 'neutral') {
+  const message = document.getElementById('message');
+  message.className = text ? `message-${type}` : '';
+  message.innerText = text;
+}
+
+function applyTheme(theme) {
+  const selectedTheme = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = selectedTheme;
+  document.getElementById('theme-toggle').checked = selectedTheme === 'dark';
+}
+
+function initializeTheme() {
+  let savedTheme = 'light';
+  try {
+    savedTheme = localStorage.getItem(THEME_KEY) || 'light';
+  } catch (error) {
+    // Use the light theme when browser storage is unavailable.
+  }
+  applyTheme(savedTheme);
+  document.getElementById('theme-toggle').addEventListener('change', (event) => {
+    const theme = event.target.checked ? 'dark' : 'light';
+    applyTheme(theme);
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch (error) {
+      // The theme remains active for the current page.
+    }
+  });
+}
 
 function createBoardElement() {
   const boardDiv = document.getElementById('sudoku-board');
@@ -25,6 +57,9 @@ function createBoardElement() {
       input.className = 'sudoku-cell';
       input.dataset.row = i;
       input.dataset.col = j;
+      input.dataset.box = Math.floor(i / 3) * 3 + Math.floor(j / 3);
+      input.classList.add(Number(input.dataset.box) % 2 === 0 ? 'box-tone-a' : 'box-tone-b');
+      input.setAttribute('aria-label', `Row ${i + 1}, Column ${j + 1}`);
       input.addEventListener('input', (e) => {
         const val = e.target.value.replace(/[^1-9]/g, '');
         e.target.value = val;
@@ -189,8 +224,7 @@ function completeGame() {
   document.querySelectorAll('#sudoku-board input').forEach((input) => {
     input.disabled = true;
   });
-  document.getElementById('message').style.color = '#388e3c';
-  document.getElementById('message').innerText = `Congratulations! You solved it in ${formatElapsedTime(elapsedSeconds)}.`;
+  setMessage(`Congratulations! You solved it in ${formatElapsedTime(elapsedSeconds)}.`, 'success');
   createLeaderboardEntry();
 }
 
@@ -199,7 +233,7 @@ async function newGame() {
   const res = await fetch(`/new?difficulty=${encodeURIComponent(difficulty)}`);
   const data = await res.json();
   if (data.error) {
-    document.getElementById('message').innerText = data.error;
+    setMessage(data.error, 'error');
     return;
   }
   activeDifficulty = data.difficulty;
@@ -208,7 +242,7 @@ async function newGame() {
   document.getElementById('hint').disabled = false;
   document.getElementById('hint-count').innerText = 'Hints used: 0';
   document.getElementById('hint-count').dataset.count = '0';
-  document.getElementById('message').innerText = '';
+  setMessage('');
   startTimer();
 }
 
@@ -221,16 +255,14 @@ async function requestHint() {
   const data = await res.json();
   const msg = document.getElementById('message');
   if (data.error) {
-    msg.style.color = '#d32f2f';
-    msg.innerText = data.error;
+    setMessage(data.error, 'error');
     return;
   }
 
   document.getElementById('hint-count').innerText = `Hints used: ${data.hints_used}`;
   document.getElementById('hint-count').dataset.count = data.hints_used;
   if (data.hint === null) {
-    msg.style.color = '#555';
-    msg.innerText = 'No empty cells remain.';
+    setMessage('No empty cells remain.', 'neutral');
     return;
   }
 
@@ -241,8 +273,7 @@ async function requestHint() {
   input.disabled = true;
   input.classList.add('hinted');
   input.classList.remove('incorrect');
-  msg.style.color = '#388e3c';
-  msg.innerText = 'Hint added.';
+  setMessage('Hint added.', 'success');
 }
 
 async function checkSolution() {
@@ -257,8 +288,7 @@ async function checkSolution() {
   const data = await res.json();
   const msg = document.getElementById('message');
   if (data.error) {
-    msg.style.color = '#d32f2f';
-    msg.innerText = data.error;
+    setMessage(data.error, 'error');
     return;
   }
   const incorrect = new Set(data.incorrect.map(x => x[0]*SIZE + x[1]));
@@ -273,13 +303,13 @@ async function checkSolution() {
   if (incorrect.size === 0 && !gameCompleted) {
     completeGame();
   } else {
-    msg.style.color = '#d32f2f';
-    msg.innerText = 'Some cells are incorrect.';
+    setMessage('Some cells are incorrect.', 'error');
   }
 }
 
 // Wire buttons
 window.addEventListener('load', () => {
+  initializeTheme();
   document.getElementById('new-game').addEventListener('click', newGame);
   document.getElementById('check-solution').addEventListener('click', checkSolution);
   document.getElementById('hint').addEventListener('click', requestHint);

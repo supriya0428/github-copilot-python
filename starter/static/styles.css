@@ -1,21 +1,105 @@
+:root {
+    --page-background: #f4f4f4;
+    --primary-text: #333;
+    --secondary-text: #555;
+    --board-background: #fff;
+    --box-tone-a: #fff;
+    --box-tone-b: #eef4f8;
+    --normal-cell: #fafafa;
+    --prefilled-cell: #e0e0e0;
+    --hinted-cell: #fff3cd;
+    --incorrect-cell: #ffcdd2;
+    --focus-state: #e0f7fa;
+    --button-background: #1976d2;
+    --button-hover: #1565c0;
+    --button-text: #fff;
+    --timer-text: #1976d2;
+    --leaderboard-background: #fff;
+    --success-message: #388e3c;
+    --error-message: #d32f2f;
+    --neutral-message: #555;
+    --grid-line: #9aa7b1;
+    --strong-grid-line: #333;
+    --shadow: rgba(0, 0, 0, 0.1);
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --page-background: #18212b;
+    --primary-text: #f1f5f9;
+    --secondary-text: #c5d0da;
+    --board-background: #24313d;
+    --box-tone-a: #24313d;
+    --box-tone-b: #30414f;
+    --normal-cell: #263541;
+    --prefilled-cell: #465563;
+    --hinted-cell: #66551f;
+    --incorrect-cell: #713b45;
+    --focus-state: #1e5964;
+    --button-background: #4b9bea;
+    --button-hover: #78b4f0;
+    --button-text: #101820;
+    --timer-text: #8fc5ff;
+    --leaderboard-background: #24313d;
+    --success-message: #8bd49a;
+    --error-message: #ff9caa;
+    --neutral-message: #c5d0da;
+    --grid-line: #718392;
+    --strong-grid-line: #d7e0e7;
+    --shadow: rgba(0, 0, 0, 0.35);
+}
+
+* {
+    box-sizing: border-box;
+}
+
 body {
     font-family: Arial, sans-serif;
-    background: #f4f4f4;
+    background: var(--page-background);
+    color: var(--primary-text);
     text-align: center;
     margin: 0;
-    padding: 0;
+    padding: 0 16px 32px;
+    transition: background 0.2s, color 0.2s;
+}
+
+.game-shell {
+    width: min(100%, 720px);
+    margin: 0 auto;
 }
 
 h1 {
     margin-top: 30px;
-    color: #333;
+    color: var(--primary-text);
+}
+
+.game-options {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px 24px;
+}
+
+.theme-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--primary-text);
+    cursor: pointer;
+}
+
+#theme-toggle {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--button-background);
 }
 
 #timer {
     margin: 18px auto;
     font-size: 28px;
     font-weight: bold;
-    color: #1976d2;
+    color: var(--timer-text);
 }
 
 label,
@@ -26,91 +110,131 @@ select {
 select {
     margin-left: 6px;
     padding: 6px;
+    color: var(--primary-text);
+    background: var(--board-background);
+    border: 1px solid var(--grid-line);
+    border-radius: 4px;
 }
 
 #sudoku-board {
     display: inline-block;
+    width: min(92vw, 468px);
     margin: 30px auto;
-    border: 4px solid #333;
-    background: #fff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 4px solid var(--strong-grid-line);
+    background: var(--board-background);
+    box-shadow: 0 2px 8px var(--shadow);
 }
 
 .sudoku-row {
     display: flex;
+    width: 100%;
 }
 
 .sudoku-cell {
-    width: 40px;
-    height: 40px;
-    border: 1px solid #bbb;
+    width: 11.1111%;
+    aspect-ratio: 1;
+    min-width: 0;
+    border: 1px solid var(--grid-line);
     text-align: center;
-    font-size: 20px;
+    font-size: clamp(16px, 4vw, 20px);
     outline: none;
-    background: #fafafa;
+    color: var(--primary-text);
+    background: var(--normal-cell);
     transition: background 0.2s;
 }
 
+.sudoku-cell.box-tone-a {
+    background: var(--box-tone-a);
+}
+
+.sudoku-cell.box-tone-b {
+    background: var(--box-tone-b);
+}
+
 .sudoku-cell:focus {
-    background: #e0f7fa;
+    background: var(--focus-state);
+    outline: 2px solid var(--button-background);
+    outline-offset: -2px;
 }
 
 .sudoku-cell.prefilled {
-    background: #e0e0e0;
+    background: var(--prefilled-cell);
     font-weight: bold;
-    color: #333;
+    color: var(--primary-text);
 }
 
 .sudoku-cell.hinted {
-    background: #fff3cd;
+    background: var(--hinted-cell);
     font-weight: bold;
-    color: #7a5200;
+    color: var(--primary-text);
 }
 
 .sudoku-cell.incorrect {
-    background: #ffcdd2;
+    background: var(--incorrect-cell);
+    text-decoration: underline wavy;
 }
 
 .sudoku-cell:nth-child(3),
 .sudoku-cell:nth-child(6) {
-    border-right: 3px solid #333;
+    border-right: 3px solid var(--strong-grid-line);
 }
 
 .sudoku-row:nth-child(3) .sudoku-cell,
 .sudoku-row:nth-child(6) .sudoku-cell {
-    border-bottom: 3px solid #333;
+    border-bottom: 3px solid var(--strong-grid-line);
 }
 
 .controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
     margin: 20px auto;
 }
 
 button {
     padding: 8px 18px;
-    margin: 0 8px;
     font-size: 16px;
     border: none;
-    background: #1976d2;
-    color: #fff;
+    background: var(--button-background);
+    color: var(--button-text);
     border-radius: 4px;
     cursor: pointer;
     transition: background 0.2s;
 }
 
 button:hover {
-    background: #1565c0;
+    background: var(--button-hover);
 }
 
 #message {
-    margin-left: 20px;
+    flex: 1 1 100%;
+    min-height: 1.5em;
     font-size: 16px;
-    color: #d32f2f;
+    overflow-wrap: anywhere;
+}
+
+.message-success {
+    color: var(--success-message);
+}
+
+.message-error {
+    color: var(--error-message);
+}
+
+.message-neutral {
+    color: var(--neutral-message);
 }
 
 #leaderboard {
-    max-width: 480px;
+    width: min(100%, 480px);
     margin: 30px auto;
+    padding: 0 16px;
     text-align: left;
+    color: var(--primary-text);
+    background: var(--leaderboard-background);
+    border-radius: 4px;
 }
 
 #leaderboard h2 {
@@ -119,4 +243,31 @@ button:hover {
 
 #leaderboard-list {
     line-height: 1.8;
+    overflow-wrap: anywhere;
+    padding-left: 28px;
+}
+
+@media (max-width: 480px) {
+    body {
+        padding-right: 8px;
+        padding-left: 8px;
+    }
+
+    h1 {
+        margin-top: 20px;
+        font-size: 28px;
+    }
+
+    #sudoku-board {
+        margin-top: 22px;
+    }
+
+    button {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+
+    .controls > * {
+        max-width: 100%;
+    }
 }

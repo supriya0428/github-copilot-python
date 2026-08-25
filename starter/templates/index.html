@@ -6,26 +6,36 @@
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-  <h1>Sudoku Game</h1>
-  <label for="difficulty">Difficulty:</label>
-  <select id="difficulty">
-    <option value="easy">Easy</option>
-    <option value="medium" selected>Medium</option>
-    <option value="hard">Hard</option>
-  </select>
-  <div id="timer" aria-live="polite">00:00</div>
-  <div id="sudoku-board"></div>
-  <div class="controls">
+  <main class="game-shell">
+    <h1>Sudoku Game</h1>
+    <div class="game-options">
+      <div class="difficulty-control">
+        <label for="difficulty">Difficulty:</label>
+        <select id="difficulty">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </div>
+      <label class="theme-control" for="theme-toggle">
+        <input id="theme-toggle" type="checkbox" aria-label="Toggle dark mode">
+        <span>Dark mode</span>
+      </label>
+    </div>
+    <div id="timer" aria-live="polite">00:00</div>
+    <div id="sudoku-board"></div>
+    <div class="controls">
     <button id="new-game">New Game</button>
     <button id="check-solution">Check Solution</button>
     <button id="hint">Hint</button>
     <span id="hint-count">Hints used: 0</span>
-    <span id="message"></span>
-  </div>
-  <section id="leaderboard" aria-labelledby="leaderboard-title">
-    <h2 id="leaderboard-title">Top 10</h2>
-    <ol id="leaderboard-list"></ol>
-  </section>
+      <span id="message" role="status" aria-live="polite"></span>
+    </div>
+    <section id="leaderboard" aria-labelledby="leaderboard-title">
+      <h2 id="leaderboard-title">Top 10</h2>
+      <ol id="leaderboard-list"></ol>
+    </section>
+  </main>
   <script src="/static/main.js"></script>
 </body>
 </html>

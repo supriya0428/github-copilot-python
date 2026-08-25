@@ -355,6 +355,48 @@ def test_frontend_includes_timer_completion_and_leaderboard_behavior():
     assert 'window.prompt' in javascript
 
 
+def test_frontend_includes_accessible_theme_toggle_and_persistence():
+    javascript = Path(app_module.app.root_path, 'static', 'main.js').read_text()
+    html = app_module.app.test_client().get('/').get_data(as_text=True)
+
+    assert 'id="theme-toggle"' in html
+    assert 'aria-label="Toggle dark mode"' in html
+    assert "document.documentElement.dataset.theme" in javascript
+    assert "localStorage.getItem(THEME_KEY)" in javascript
+    assert "localStorage.setItem(THEME_KEY, theme)" in javascript
+    assert 'initializeTheme()' in javascript
+
+
+def test_frontend_includes_box_identifiers_accessible_cells_and_semantic_messages():
+    javascript = Path(app_module.app.root_path, 'static', 'main.js').read_text()
+
+    assert "input.dataset.box" in javascript
+    assert "box-tone-a" in javascript
+    assert "box-tone-b" in javascript
+    assert "aria-label', `Row ${i + 1}, Column ${j + 1}`" in javascript
+    assert "message-${type}" in javascript
+    assert 'style.color' not in javascript
+
+
+def test_frontend_css_defines_themes_box_tones_and_responsive_layout():
+    css = Path(app_module.app.root_path, 'static', 'styles.css').read_text()
+
+    for variable in (
+        '--page-background', '--primary-text', '--secondary-text',
+        '--board-background', '--box-tone-a', '--box-tone-b', '--normal-cell',
+        '--prefilled-cell', '--hinted-cell', '--incorrect-cell', '--focus-state',
+        '--button-background', '--timer-text', '--leaderboard-background',
+        '--success-message', '--error-message', '--neutral-message',
+    ):
+        assert variable in css
+    assert ':root[data-theme="dark"]' in css
+    assert '.sudoku-cell.box-tone-a' in css
+    assert '.sudoku-cell.box-tone-b' in css
+    assert 'width: min(92vw, 468px)' in css
+    assert 'aspect-ratio: 1' in css
+    assert 'flex-wrap: wrap' in css
+
+
 def test_frontend_resets_timer_and_completion_on_new_game():
     javascript = Path(app_module.app.root_path, 'static', 'main.js').read_text()
 
