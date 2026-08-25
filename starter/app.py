@@ -9,6 +9,17 @@ CURRENT = {
     'solution': None
 }
 
+
+def is_valid_submitted_board(board):
+    if not isinstance(board, list) or len(board) != sudoku_logic.SIZE:
+        return False
+    return all(
+        isinstance(row, list)
+        and len(row) == sudoku_logic.SIZE
+        and all(isinstance(cell, int) and not isinstance(cell, bool) and 0 <= cell <= sudoku_logic.SIZE for cell in row)
+        for row in board
+    )
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -28,13 +39,22 @@ def new_game():
 @app.route('/check', methods=['POST'])
 def check_solution():
     data = request.json
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Invalid board'}), 400
+
     board = data.get('board')
     solution = CURRENT.get('solution')
-    if solution is None:
+    puzzle = CURRENT.get('puzzle')
+    if solution is None or puzzle is None:
         return jsonify({'error': 'No game in progress'}), 400
+    if not is_valid_submitted_board(board):
+        return jsonify({'error': 'Invalid board'}), 400
+
     incorrect = []
     for i in range(sudoku_logic.SIZE):
         for j in range(sudoku_logic.SIZE):
+            if puzzle[i][j] != sudoku_logic.EMPTY and board[i][j] != puzzle[i][j]:
+                return jsonify({'error': 'Prefilled cells cannot be changed'}), 400
             if board[i][j] != solution[i][j]:
                 incorrect.append([i, j])
     return jsonify({'incorrect': incorrect})

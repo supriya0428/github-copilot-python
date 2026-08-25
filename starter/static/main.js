@@ -18,11 +18,28 @@ function createBoardElement() {
       input.addEventListener('input', (e) => {
         const val = e.target.value.replace(/[^1-9]/g, '');
         e.target.value = val;
+        e.target.classList.toggle('incorrect', val !== '' && hasConflict(i, j, val));
       });
       rowDiv.appendChild(input);
     }
     boardDiv.appendChild(rowDiv);
   }
+}
+
+function hasConflict(row, col, value) {
+  const inputs = document.getElementById('sudoku-board').getElementsByTagName('input');
+  for (let index = 0; index < inputs.length; index++) {
+    const input = inputs[index];
+    if (input === inputs[row * SIZE + col] || input.value !== value) continue;
+    const otherRow = Number(input.dataset.row);
+    const otherCol = Number(input.dataset.col);
+    if (otherRow === row || otherCol === col ||
+        (Math.floor(otherRow / 3) === Math.floor(row / 3) &&
+         Math.floor(otherCol / 3) === Math.floor(col / 3))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function renderPuzzle(puz) {
@@ -87,9 +104,9 @@ async function checkSolution() {
   for (let idx = 0; idx < inputs.length; idx++) {
     const inp = inputs[idx];
     if (inp.disabled) continue;
-    inp.className = 'sudoku-cell';
+    inp.classList.remove('incorrect');
     if (incorrect.has(idx)) {
-      inp.className = 'sudoku-cell incorrect';
+      inp.classList.add('incorrect');
     }
   }
   if (incorrect.size === 0) {

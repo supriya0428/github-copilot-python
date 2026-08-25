@@ -92,14 +92,104 @@ def test_check_solution_reports_incorrect_cells_and_accepts_solution():
     app_module.app.config.update(TESTING=True)
     client = app_module.app.test_client()
     client.get('/new')
+    puzzle = app_module.CURRENT['puzzle']
     solution = copy.deepcopy(app_module.CURRENT['solution'])
     incorrect_board = copy.deepcopy(solution)
-    incorrect_board[0][0] = (incorrect_board[0][0] % 9) + 1
+    editable_cell = next(
+        (row, column)
+        for row in range(9)
+        for column in range(9)
+        if puzzle[row][column] == 0
+    )
+    row, column = editable_cell
+    incorrect_board[row][column] = (incorrect_board[row][column] % 9) + 1
 
     incorrect_response = client.post('/check', json={'board': incorrect_board})
     correct_response = client.post('/check', json={'board': solution})
 
     assert incorrect_response.status_code == 200
-    assert [0, 0] in incorrect_response.get_json()['incorrect']
+    assert [row, column] in incorrect_response.get_json()['incorrect']
     assert correct_response.status_code == 200
     assert correct_response.get_json() == {'incorrect': []}
+
+
+def test_check_solution_reports_only_incorrect_editable_cells():
+    app_module.app.config.update(TESTING=True)
+    client = app_module.app.test_client()
+    client.get('/new')
+    puzzle = copy.deepcopy(app_module.CURRENT['puzzle'])
+    solution = copy.deepcopy(app_module.CURRENT['solution'])
+    editable_cell = next(
+        (row, column)
+        for row in range(9)
+        for column in range(9)
+        if puzzle[row][column] == 0
+    )
+    row, column = editable_cell
+    solution[row][column] = (solution[row][column] % 9) + 1
+
+    response = client.post('/check', json={'board': solution})
+
+    assert response.status_code == 200
+    assert response.get_json()['incorrect'] == [[row, column]]
+
+
+def test_check_solution_accepts_a_solved_puzzle_without_incorrect_cells():
+    app_module.app.config.update(TESTING=True)
+    client = app_module.app.test_client()
+    client.get('/new')
+
+    response = client.post('/check', json={'board': copy.deepcopy(app_module.CURRENT['solution'])})
+
+    assert response.status_code == 200
+    assert response.get_json() == {'incorrect': []}
+
+
+def test_check_solution_rejects_invalid_board_values_and_shapes():
+    app_module.app.config.update(TESTING=True)
+    client = app_module.app.test_client()
+    client.get('/new')
+
+    invalid_boards = [
+        [[10] * 9 for _ in range(9)],
+        [[0] * 9 for _ in range(8)],
+        [[0] * 9 for _ in range(9)],
+    ]
+    invalid_boards[-1][0][0] = '1'
+
+    for board in invalid_boards:
+        response = client.post('/check', json={'board': board})
+
+        assert response.status_code == 400
+        assert response.get_json() == {'error': 'Invalid board'}
+
+
+def test_check_solution_rejects_changes_to_prefilled_cells():
+    app_module.app.config.update(TESTING=True)
+    client = app_module.app.test_client()
+    client.get('/new')
+    puzzle = copy.deepcopy(app_module.CURRENT['puzzle'])
+    prefilled_cell = next(
+        (row, column)
+        for row in range(9)
+        for column in range(9)
+        if puzzle[row][column] != 0
+    )
+    row, column = prefilled_cell
+    board = copy.deepcopy(app_module.CURRENT['solution'])
+    board[row][column] = (board[row][column] % 9) + 1
+
+    response = client.post('/check', json={'board': board})
+
+    assert response.status_code == 400
+    assert response.get_json() == {'error': 'Prefilled cells cannot be changed'}
+
+
+def test_frontend_protects_prefilled_cells_and_marks_conflicts():
+    javascript = Path(app_module.app.root_path, 'static', 'main.js').read_text()
+    html = client = app_module.app.test_client().get('/').get_data(as_text=True)
+
+    assert 'inp.disabled = true' in javascript
+    assert 'hasConflict(i, j, val)' in javascript
+    assert "classList.toggle('incorrect'" in javascript
+    assert 'id="sudoku-board"' in html
