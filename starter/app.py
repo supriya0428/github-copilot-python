@@ -7,6 +7,7 @@ app = Flask(__name__)
 CURRENT = {
     'puzzle': None,
     'solution': None,
+    'difficulty': None,
     'hint_count': 0,
     'hinted_cells': set(),
 }
@@ -36,9 +37,10 @@ def new_game():
     puzzle, solution = sudoku_logic.generate_puzzle(clues)
     CURRENT['puzzle'] = puzzle
     CURRENT['solution'] = solution
+    CURRENT['difficulty'] = difficulty
     CURRENT['hint_count'] = 0
     CURRENT['hinted_cells'] = set()
-    return jsonify({'puzzle': puzzle})
+    return jsonify({'puzzle': puzzle, 'difficulty': difficulty})
 
 
 @app.route('/hint', methods=['POST'])

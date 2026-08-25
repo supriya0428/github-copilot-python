@@ -13,6 +13,7 @@
     <option value="medium" selected>Medium</option>
     <option value="hard">Hard</option>
   </select>
+  <div id="timer" aria-live="polite">00:00</div>
   <div id="sudoku-board"></div>
   <div class="controls">
     <button id="new-game">New Game</button>
@@ -21,6 +22,10 @@
     <span id="hint-count">Hints used: 0</span>
     <span id="message"></span>
   </div>
+  <section id="leaderboard" aria-labelledby="leaderboard-title">
+    <h2 id="leaderboard-title">Top 10</h2>
+    <ol id="leaderboard-list"></ol>
+  </section>
   <script src="/static/main.js"></script>
 </body>
 </html>

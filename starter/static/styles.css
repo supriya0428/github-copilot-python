@@ -11,6 +11,13 @@ h1 {
     color: #333;
 }
 
+#timer {
+    margin: 18px auto;
+    font-size: 28px;
+    font-weight: bold;
+    color: #1976d2;
+}
+
 label,
 select {
     font-size: 16px;
@@ -98,4 +105,18 @@ button:hover {
     margin-left: 20px;
     font-size: 16px;
     color: #d32f2f;
+}
+
+#leaderboard {
+    max-width: 480px;
+    margin: 30px auto;
+    text-align: left;
+}
+
+#leaderboard h2 {
+    text-align: center;
+}
+
+#leaderboard-list {
+    line-height: 1.8;
 }

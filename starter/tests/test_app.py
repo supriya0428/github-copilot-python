@@ -24,6 +24,32 @@ def test_new_game_returns_a_puzzle():
     assert len(puzzle) == 9
     assert all(len(row) == 9 for row in puzzle)
     assert app_module.CURRENT['solution'] is not None
+    assert response.get_json()['difficulty'] == 'medium'
+
+
+def test_new_game_stores_active_difficulty_only_after_success():
+    app_module.app.config.update(TESTING=True)
+    client = app_module.app.test_client()
+    client.get('/new?difficulty=easy')
+
+    assert app_module.CURRENT['difficulty'] == 'easy'
+
+
+def test_invalid_new_game_preserves_existing_game_state():
+    app_module.app.config.update(TESTING=True)
+    client = app_module.app.test_client()
+    client.get('/new?difficulty=hard')
+    previous_state = {
+        key: copy.deepcopy(value)
+        for key, value in app_module.CURRENT.items()
+        if key != 'hinted_cells'
+    }
+    previous_hinted_cells = app_module.CURRENT['hinted_cells'].copy()
+
+    response = client.get('/new?difficulty=invalid')
+
+    assert response.status_code == 400
+    assert app_module.CURRENT == {**previous_state, 'hinted_cells': previous_hinted_cells}
 
 
 def test_new_game_defaults_to_medium():
@@ -232,6 +258,23 @@ def test_check_solution_accepts_a_solved_puzzle_without_incorrect_cells():
     assert response.get_json() == {'incorrect': []}
 
 
+def test_hinted_solution_can_complete_a_puzzle():
+    app_module.app.config.update(TESTING=True)
+    client = app_module.app.test_client()
+    client.get('/new')
+    board = copy.deepcopy(app_module.CURRENT['puzzle'])
+    while any(cell == 0 for row in board for cell in row):
+        hint = client.post('/hint', json={'board': board}).get_json()
+        if 'hint' in hint and hint['hint'] is None:
+            break
+        board[hint['row']][hint['column']] = hint['value']
+
+    response = client.post('/check', json={'board': board})
+
+    assert response.status_code == 200
+    assert response.get_json() == {'incorrect': []}
+
+
 def test_check_solution_rejects_invalid_board_values_and_shapes():
     app_module.app.config.update(TESTING=True)
     client = app_module.app.test_client()
@@ -293,3 +336,30 @@ def test_frontend_includes_hint_controls_and_behavior():
     assert 'input.disabled = true' in javascript
     assert "classList.add('hinted')" in javascript
     assert '.sudoku-cell.hinted' in css
+
+
+def test_frontend_includes_timer_completion_and_leaderboard_behavior():
+    javascript = Path(app_module.app.root_path, 'static', 'main.js').read_text()
+    html = app_module.app.test_client().get('/').get_data(as_text=True)
+
+    assert 'id="timer"' in html
+    assert 'id="leaderboard-list"' in html
+    assert "Date.now() - gameStartedAt" in javascript
+    assert 'clearInterval(timerInterval)' in javascript
+    assert 'gameCompleted = true' in javascript
+    assert 'LEADERBOARD_KEY = \'sudokuLeaderboard\'' in javascript
+    assert 'DIFFICULTY_BONUSES' in javascript
+    assert 'HINT_PENALTY_SECONDS' in javascript
+    assert 'slice(0, 10)' in javascript
+    assert 'hintsUsed' in javascript
+    assert 'window.prompt' in javascript
+
+
+def test_frontend_resets_timer_and_completion_on_new_game():
+    javascript = Path(app_module.app.root_path, 'static', 'main.js').read_text()
+
+    assert 'activeDifficulty = data.difficulty' in javascript
+    assert "document.getElementById('timer').innerText = '00:00'" in javascript
+    assert "document.getElementById('check-solution').disabled = false" in javascript
+    assert "document.getElementById('hint').disabled = false" in javascript
+    assert 'startTimer()' in javascript
