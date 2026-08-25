@@ -114,3 +114,30 @@ def test_generate_puzzle_returns_puzzle_with_matching_solution_and_clue_count():
         for row in range(sudoku_logic.SIZE)
         for column in range(sudoku_logic.SIZE)
     )
+
+
+def test_generate_puzzle_supports_all_difficulty_clue_targets():
+    for difficulty, clues in sudoku_logic.DIFFICULTY_CLUES.items():
+        puzzle, solution = sudoku_logic.generate_puzzle(clues)
+
+        assert sum(cell != sudoku_logic.EMPTY for row in puzzle for cell in row) == clues
+        assert sudoku_logic.count_solutions(puzzle) == 1
+        assert is_complete_valid_board(solution)
+
+
+def test_generate_puzzle_retries_when_target_is_not_reached(monkeypatch):
+    attempts = iter([False, True])
+    original_remove_cells = sudoku_logic.remove_cells
+
+    def remove_cells_with_one_failed_attempt(board, clues):
+        if not next(attempts):
+            return False
+        return original_remove_cells(board, clues)
+
+    monkeypatch.setattr(sudoku_logic, 'remove_cells', remove_cells_with_one_failed_attempt)
+
+    puzzle, solution = sudoku_logic.generate_puzzle(45)
+
+    assert sum(cell != sudoku_logic.EMPTY for row in puzzle for cell in row) == 45
+    assert sudoku_logic.count_solutions(puzzle) == 1
+    assert is_complete_valid_board(solution)

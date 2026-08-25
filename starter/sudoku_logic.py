@@ -3,6 +3,12 @@ import random
 
 SIZE = 9
 EMPTY = 0
+DIFFICULTY_CLUES = {
+    'easy': 45,
+    'medium': 35,
+    'hard': 25,
+}
+MAX_GENERATION_ATTEMPTS = 10
 
 
 def deep_copy(board):
@@ -108,11 +114,18 @@ def remove_cells(board, clues):
             cells_to_remove -= 1
         else:
             board[row][col] = value
+    return cells_to_remove == 0
+
 
 def generate_puzzle(clues=35):
-    board = create_empty_board()
-    fill_board(board)
-    solution = deep_copy(board)
-    remove_cells(board, clues)
-    puzzle = deep_copy(board)
-    return puzzle, solution
+    if not isinstance(clues, int) or not 0 <= clues <= SIZE * SIZE:
+        raise ValueError('clues must be an integer from 0 to 81')
+
+    for _ in range(MAX_GENERATION_ATTEMPTS):
+        board = create_empty_board()
+        fill_board(board)
+        solution = deep_copy(board)
+        if remove_cells(board, clues):
+            return deep_copy(board), solution
+
+    raise RuntimeError('Unable to generate a puzzle with the requested clue count')
