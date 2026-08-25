@@ -6,7 +6,9 @@ app = Flask(__name__)
 # Keep a simple in-memory store for current puzzle and solution
 CURRENT = {
     'puzzle': None,
-    'solution': None
+    'solution': None,
+    'hint_count': 0,
+    'hinted_cells': set(),
 }
 
 
@@ -34,7 +36,48 @@ def new_game():
     puzzle, solution = sudoku_logic.generate_puzzle(clues)
     CURRENT['puzzle'] = puzzle
     CURRENT['solution'] = solution
+    CURRENT['hint_count'] = 0
+    CURRENT['hinted_cells'] = set()
     return jsonify({'puzzle': puzzle})
+
+
+@app.route('/hint', methods=['POST'])
+def provide_hint():
+    data = request.json
+    puzzle = CURRENT.get('puzzle')
+    solution = CURRENT.get('solution')
+    if puzzle is None or solution is None:
+        return jsonify({'error': 'No game in progress'}), 400
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Invalid board'}), 400
+
+    board = data.get('board')
+    if not is_valid_submitted_board(board):
+        return jsonify({'error': 'Invalid board'}), 400
+
+    for row in range(sudoku_logic.SIZE):
+        for column in range(sudoku_logic.SIZE):
+            if puzzle[row][column] != sudoku_logic.EMPTY and board[row][column] != puzzle[row][column]:
+                return jsonify({'error': 'Prefilled cells cannot be changed'}), 400
+
+    for row in range(sudoku_logic.SIZE):
+        for column in range(sudoku_logic.SIZE):
+            cell = (row, column)
+            if (
+                puzzle[row][column] == sudoku_logic.EMPTY
+                and board[row][column] == sudoku_logic.EMPTY
+                and cell not in CURRENT['hinted_cells']
+            ):
+                CURRENT['hinted_cells'].add(cell)
+                CURRENT['hint_count'] += 1
+                return jsonify({
+                    'row': row,
+                    'column': column,
+                    'value': solution[row][column],
+                    'hints_used': CURRENT['hint_count'],
+                })
+
+    return jsonify({'hint': None, 'hints_used': CURRENT['hint_count']})
 
 @app.route('/check', methods=['POST'])
 def check_solution():

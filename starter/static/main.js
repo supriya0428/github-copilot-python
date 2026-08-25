@@ -73,7 +73,53 @@ async function newGame() {
     return;
   }
   renderPuzzle(data.puzzle);
+  document.getElementById('hint-count').innerText = 'Hints used: 0';
   document.getElementById('message').innerText = '';
+}
+
+function getCurrentBoard() {
+  const inputs = document.getElementById('sudoku-board').getElementsByTagName('input');
+  const board = [];
+  for (let i = 0; i < SIZE; i++) {
+    board[i] = [];
+    for (let j = 0; j < SIZE; j++) {
+      const val = inputs[i * SIZE + j].value;
+      board[i][j] = val ? parseInt(val, 10) : 0;
+    }
+  }
+  return board;
+}
+
+async function requestHint() {
+  const res = await fetch('/hint', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({board: getCurrentBoard()})
+  });
+  const data = await res.json();
+  const msg = document.getElementById('message');
+  if (data.error) {
+    msg.style.color = '#d32f2f';
+    msg.innerText = data.error;
+    return;
+  }
+
+  document.getElementById('hint-count').innerText = `Hints used: ${data.hints_used}`;
+  if (data.hint === null) {
+    msg.style.color = '#555';
+    msg.innerText = 'No empty cells remain.';
+    return;
+  }
+
+  const input = document.querySelector(
+    `input[data-row="${data.row}"][data-col="${data.column}"]`
+  );
+  input.value = data.value;
+  input.disabled = true;
+  input.classList.add('hinted');
+  input.classList.remove('incorrect');
+  msg.style.color = '#388e3c';
+  msg.innerText = 'Hint added.';
 }
 
 async function checkSolution() {
@@ -122,6 +168,7 @@ async function checkSolution() {
 window.addEventListener('load', () => {
   document.getElementById('new-game').addEventListener('click', newGame);
   document.getElementById('check-solution').addEventListener('click', checkSolution);
+  document.getElementById('hint').addEventListener('click', requestHint);
   // initialize
   newGame();
 });

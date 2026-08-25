@@ -37,6 +37,18 @@ def test_new_game_defaults_to_medium():
     assert sum(cell != 0 for row in puzzle for cell in row) == 35
 
 
+def test_new_game_resets_hint_state():
+    app_module.app.config.update(TESTING=True)
+    client = app_module.app.test_client()
+    client.get('/new')
+    client.post('/hint', json={'board': app_module.CURRENT['puzzle']})
+
+    client.get('/new')
+
+    assert app_module.CURRENT['hint_count'] == 0
+    assert app_module.CURRENT['hinted_cells'] == set()
+
+
 def test_new_game_supports_all_difficulty_levels():
     app_module.app.config.update(TESTING=True)
     client = app_module.app.test_client()
@@ -86,6 +98,81 @@ def test_check_solution_requires_a_game_in_progress():
 
     assert response.status_code == 400
     assert response.get_json() == {'error': 'No game in progress'}
+
+
+def test_hint_requires_a_game_in_progress():
+    app_module.CURRENT['puzzle'] = None
+    app_module.CURRENT['solution'] = None
+    app_module.app.config.update(TESTING=True)
+    client = app_module.app.test_client()
+
+    response = client.post('/hint', json={'board': []})
+
+    assert response.status_code == 400
+    assert response.get_json() == {'error': 'No game in progress'}
+
+
+def test_hint_returns_one_correct_editable_cell_and_tracks_count():
+    app_module.app.config.update(TESTING=True)
+    client = app_module.app.test_client()
+    client.get('/new')
+    puzzle = copy.deepcopy(app_module.CURRENT['puzzle'])
+
+    response = client.post('/hint', json={'board': puzzle})
+    data = response.get_json()
+
+    assert response.status_code == 200
+    assert data['row'] == 0
+    assert data['column'] == next(column for column in range(9) if puzzle[0][column] == 0)
+    assert data['value'] == app_module.CURRENT['solution'][data['row']][data['column']]
+    assert data['hints_used'] == 1
+    assert app_module.CURRENT['hint_count'] == 1
+    assert (data['row'], data['column']) in app_module.CURRENT['hinted_cells']
+
+
+def test_hint_does_not_overwrite_user_values_or_reuse_hinted_cells():
+    app_module.app.config.update(TESTING=True)
+    client = app_module.app.test_client()
+    client.get('/new')
+    puzzle = copy.deepcopy(app_module.CURRENT['puzzle'])
+    editable = next((row, column) for row in range(9) for column in range(9) if puzzle[row][column] == 0)
+    user_board = copy.deepcopy(puzzle)
+    user_board[editable[0]][editable[1]] = 1
+
+    first = client.post('/hint', json={'board': user_board}).get_json()
+    second = client.post('/hint', json={'board': user_board}).get_json()
+
+    assert [first['row'], first['column']] != [editable[0], editable[1]]
+    assert [second['row'], second['column']] != [first['row'], first['column']]
+    assert second['hints_used'] == 2
+
+
+def test_hint_rejects_invalid_boards_and_prefilled_changes():
+    app_module.app.config.update(TESTING=True)
+    client = app_module.app.test_client()
+    client.get('/new')
+    puzzle = copy.deepcopy(app_module.CURRENT['puzzle'])
+    prefilled = next((row, column) for row in range(9) for column in range(9) if puzzle[row][column] != 0)
+    puzzle[prefilled[0]][prefilled[1]] = (puzzle[prefilled[0]][prefilled[1]] % 9) + 1
+
+    for board in ([[0] * 9 for _ in range(8)], puzzle):
+        response = client.post('/hint', json={'board': board})
+        assert response.status_code == 400
+        assert response.get_json()['error'] in ('Invalid board', 'Prefilled cells cannot be changed')
+
+
+def test_hint_no_op_does_not_increment_count_when_board_is_full():
+    app_module.app.config.update(TESTING=True)
+    client = app_module.app.test_client()
+    client.get('/new')
+    solution = copy.deepcopy(app_module.CURRENT['solution'])
+    app_module.CURRENT['hint_count'] = 2
+
+    response = client.post('/hint', json={'board': solution})
+
+    assert response.status_code == 200
+    assert response.get_json() == {'hint': None, 'hints_used': 2}
+    assert app_module.CURRENT['hint_count'] == 2
 
 
 def test_check_solution_reports_incorrect_cells_and_accepts_solution():
@@ -193,3 +280,16 @@ def test_frontend_protects_prefilled_cells_and_marks_conflicts():
     assert 'hasConflict(i, j, val)' in javascript
     assert "classList.toggle('incorrect'" in javascript
     assert 'id="sudoku-board"' in html
+
+
+def test_frontend_includes_hint_controls_and_behavior():
+    javascript = Path(app_module.app.root_path, 'static', 'main.js').read_text()
+    css = Path(app_module.app.root_path, 'static', 'styles.css').read_text()
+    html = app_module.app.test_client().get('/').get_data(as_text=True)
+
+    assert 'id="hint"' in html
+    assert 'id="hint-count"' in html
+    assert "fetch('/hint'" in javascript
+    assert 'input.disabled = true' in javascript
+    assert "classList.add('hinted')" in javascript
+    assert '.sudoku-cell.hinted' in css
