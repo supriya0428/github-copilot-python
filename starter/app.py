@@ -1,17 +1,30 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, session
 import sudoku_logic
-
+import os
+import secrets
+import uuid
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get(
+    'SECRET_KEY',
+    secrets.token_hex(32)
+)
+# Keep session-specific game state in memory.
+CURRENT_GAMES = {}
 
-# Keep a simple in-memory store for current puzzle and solution
-CURRENT = {
-    'puzzle': None,
-    'solution': None,
-    'difficulty': None,
-    'hint_count': 0,
-    'hinted_cells': set(),
-}
+def get_current_game():
+    game_id = session.get('game_id')
 
+    if game_id is None:
+        game_id = str(uuid.uuid4())
+        session['game_id'] = game_id
+
+    return CURRENT_GAMES.setdefault(game_id, {
+        'puzzle': None,
+        'solution': None,
+        'difficulty': None,
+        'hint_count': 0,
+        'hinted_cells': set(),
+    })
 
 def is_valid_submitted_board(board):
     if not isinstance(board, list) or len(board) != sudoku_logic.SIZE:
@@ -35,19 +48,21 @@ def new_game():
 
     clues = sudoku_logic.DIFFICULTY_CLUES[difficulty]
     puzzle, solution = sudoku_logic.generate_puzzle(clues)
-    CURRENT['puzzle'] = puzzle
-    CURRENT['solution'] = solution
-    CURRENT['difficulty'] = difficulty
-    CURRENT['hint_count'] = 0
-    CURRENT['hinted_cells'] = set()
+    game = get_current_game()
+    game['puzzle'] = puzzle
+    game['solution'] = solution
+    game['difficulty'] = difficulty
+    game['hint_count'] = 0
+    game['hinted_cells'] = set()
     return jsonify({'puzzle': puzzle, 'difficulty': difficulty})
 
 
 @app.route('/hint', methods=['POST'])
 def provide_hint():
     data = request.json
-    puzzle = CURRENT.get('puzzle')
-    solution = CURRENT.get('solution')
+    game = get_current_game()
+    puzzle = game.get('puzzle')
+    solution = game.get('solution')
     if puzzle is None or solution is None:
         return jsonify({'error': 'No game in progress'}), 400
     if not isinstance(data, dict):
@@ -68,18 +83,18 @@ def provide_hint():
             if (
                 puzzle[row][column] == sudoku_logic.EMPTY
                 and board[row][column] == sudoku_logic.EMPTY
-                and cell not in CURRENT['hinted_cells']
+                and cell not in game['hinted_cells']
             ):
-                CURRENT['hinted_cells'].add(cell)
-                CURRENT['hint_count'] += 1
+                game['hinted_cells'].add(cell)
+                game['hint_count'] += 1
                 return jsonify({
                     'row': row,
                     'column': column,
                     'value': solution[row][column],
-                    'hints_used': CURRENT['hint_count'],
+                    'hints_used': game['hint_count'],
                 })
 
-    return jsonify({'hint': None, 'hints_used': CURRENT['hint_count']})
+    return jsonify({'hint': None, 'hints_used': game['hint_count']})
 
 @app.route('/check', methods=['POST'])
 def check_solution():
@@ -88,8 +103,9 @@ def check_solution():
         return jsonify({'error': 'Invalid board'}), 400
 
     board = data.get('board')
-    solution = CURRENT.get('solution')
-    puzzle = CURRENT.get('puzzle')
+    game = get_current_game()
+    puzzle = game.get('puzzle')
+    solution = game.get('solution')
     if solution is None or puzzle is None:
         return jsonify({'error': 'No game in progress'}), 400
     if not is_valid_submitted_board(board):
@@ -105,4 +121,4 @@ def check_solution():
     return jsonify({'incorrect': incorrect})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)

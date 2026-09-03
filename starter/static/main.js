@@ -115,6 +115,11 @@ function formatElapsedTime(seconds) {
   return `${minutes}:${remainingSeconds}`;
 }
 
+function formatCompletionDate(completedAt) {
+  const date = new Date(completedAt);
+  return Number.isNaN(date.getTime()) ? completedAt : date.toLocaleDateString();
+}
+
 function updateTimer() {
   if (gameStartedAt === null || gameCompleted) return;
   elapsedSeconds = Math.floor((Date.now() - gameStartedAt) / 1000);
@@ -191,7 +196,9 @@ function renderLeaderboard() {
   list.innerHTML = '';
   sortLeaderboard(readLeaderboard()).forEach((entry) => {
     const item = document.createElement('li');
-    item.innerText = `${entry.name} - ${formatElapsedTime(entry.timeSeconds)} (${entry.difficulty}, ${entry.hintsUsed} hints)`;
+    item.innerText = `${entry.name} - ${formatElapsedTime(entry.timeSeconds)} ` +
+      `(${entry.difficulty}, ${entry.hintsUsed} hints, score ${entry.score}, ` +
+      `${formatCompletionDate(entry.completedAt)})`;
     list.appendChild(item);
   });
 }
